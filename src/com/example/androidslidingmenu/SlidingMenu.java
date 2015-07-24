@@ -3,6 +3,7 @@ package com.example.androidslidingmenu;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -62,6 +63,10 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 	 * 记录手机抬起时的横坐标。
 	 */
 	private float xUp;
+	/**
+	 * 记录手机抬起时的纵坐标。
+	 */
+	private float yUp;
 
 	/**
 	 * 左侧布局当前是显示还是隐藏。只有完全显示或隐藏时才会更改此值，滑动过程中此值无效。
@@ -102,6 +107,18 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 	 * 用于计算手指滑动的速度。
 	 */
 	private VelocityTracker mVelocityTracker;
+	/**
+	 * 左右触摸的操作
+	 */
+	private final static int LEFT_RIGHT_TOUTH=1111;
+	/**
+	 * 其它触摸的操作
+	 */		
+	private final static int OTHER_TOUTH=1110;
+	/**
+	 * 当前触摸状态
+	 */	
+	private int TOUTH_STATUS=OTHER_TOUTH;
 
 	/**
 	 * 重写SlidingLayout的构造函数，其中获取了屏幕的宽度。
@@ -114,6 +131,7 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 		WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
 		screenWidth = wm.getDefaultDisplay().getWidth();
 		touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+		setScrollEvent(this);
 	}
 
 	/**
@@ -122,7 +140,7 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 	 * @param bindView
 	 * 需要绑定的View对象。
 	 */
-	public void setScrollEvent(View bindView) {
+	private void setScrollEvent(View bindView) {
 		mBindView = bindView;
 		mBindView.setOnTouchListener(this);
 	}
@@ -130,15 +148,27 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 	/**
 	 * 将屏幕滚动到左侧布局界面，滚动速度设定为30.
 	 */
-	public void scrollToLeftLayout() {
-		new ScrollTask().execute(-30);
+	private void scrollToLeftLayout() {
+		isSliding = true;
+		new ScrollTask().execute(-15);
 	}
 
 	/**
 	 * 将屏幕滚动到右侧布局界面，滚动速度设定为-30.
 	 */
-	public void scrollToRightLayout() {
-		new ScrollTask().execute(30);
+	private void scrollToRightLayout() {
+		isSliding = true;
+		new ScrollTask().execute(15);
+	}
+	/**
+	 * 切换菜单打开关闭状态
+	 */	
+	public void toggle(){
+		if (isLeftLayoutVisible()) {
+			scrollToRightLayout();
+		} else {
+			scrollToLeftLayout();
+		}
 	}
 
 	/**
@@ -146,7 +176,7 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 	 * 
 	 * @return 左侧布局完全显示返回true，完全隐藏返回false。
 	 */
-	public boolean isLeftLayoutVisible() {
+	private boolean isLeftLayoutVisible() {
 		return isLeftLayoutVisible;
 	}
 
@@ -169,6 +199,21 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see android.view.ViewGroup#onInterceptTouchEvent(android.view.MotionEvent)
+	 */
+	@Override
+	public boolean onInterceptTouchEvent(MotionEvent ev) {
+		// TODO Auto-generated method stub
+	onTouch(this,ev);
+	if(TOUTH_STATUS==LEFT_RIGHT_TOUTH){
+		//左右滑动时屏蔽其它的操作
+		return true;
+	}else{
+		return super.onInterceptTouchEvent(ev);
+	}
+	}
+
 	@Override
 	public boolean onTouch(View v, MotionEvent event) {
 		createVelocityTracker(event);
@@ -176,65 +221,74 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 			leftLayout.setVisibility(View.VISIBLE);
 		}
 		switch (event.getAction()) {
-		case MotionEvent.ACTION_DOWN:
-			// 手指按下时，记录按下时的横坐标
-			xDown = event.getRawX();
-			yDown = event.getRawY();
-			break;
-		case MotionEvent.ACTION_MOVE:
-			// 手指移动时，对比按下时的横坐标，计算出移动的距离，来调整右侧布局的leftMargin值，从而显示和隐藏左侧布局
-			xMove = event.getRawX();
-			yMove = event.getRawY();
-			int moveDistanceX = (int) (xMove - xDown);
-			int distanceY = (int) (yMove - yDown);
-			if (!isLeftLayoutVisible && moveDistanceX >= touchSlop
-					&& (isSliding || Math.abs(distanceY) <= touchSlop)) {
-				isSliding = true;
-				rightLayoutParams.rightMargin = -moveDistanceX;
-/*				if (rightLayoutParams.rightMargin > leftEdge) {
-					rightLayoutParams.rightMargin = leftEdge;
-				}*/
-				if(screenWidth-Math.abs(rightLayoutParams.rightMargin)<screenWidth-leftLayoutParams.width){
-					rightLayoutParams.rightMargin=-leftLayoutParams.width;
+			case MotionEvent.ACTION_DOWN:
+				// 手指按下时，记录按下时的横坐标
+				xDown = event.getRawX();
+				yDown = event.getRawY();
+				break;
+			case MotionEvent.ACTION_MOVE:
+				// 手指移动时，对比按下时的横坐标，计算出移动的距离，来调整右侧布局的leftMargin值，从而显示和隐藏左侧布局
+				xMove = event.getRawX();
+				yMove = event.getRawY();
+				int moveDistanceX = (int) (xMove - xDown);
+				int distanceY = (int) (yMove - yDown);
+				//判断是哪种滑动类型
+				if(Math.abs(moveDistanceX)>=touchSlop && Math.abs(distanceY)<=touchSlop){
+					//左右滑动
+					TOUTH_STATUS=LEFT_RIGHT_TOUTH;
+				}else{
+					//其它滑动
+					TOUTH_STATUS=OTHER_TOUTH;
 				}
-				rightLayout.setLayoutParams(rightLayoutParams);
-			}
-			if (isLeftLayoutVisible && -moveDistanceX >= touchSlop) {
-				isSliding = true;
-				rightLayoutParams.rightMargin = rightEdge - moveDistanceX;
-/*				if (rightLayoutParams.rightMargin < rightEdge) {
-					rightLayoutParams.rightMargin = rightEdge;
-				}*/
-				if(rightLayoutParams.rightMargin >0){
-					rightLayoutParams.rightMargin = 0;
-				}
-				rightLayout.setLayoutParams(rightLayoutParams);
-			}
-			break;
-		case MotionEvent.ACTION_UP:
-			xUp = event.getRawX();
-			int upDistanceX = (int) (xUp - xDown);
-			if (isSliding) {
-				// 手指抬起时，进行判断当前手势的意图，从而决定是滚动到左侧布局，还是滚动到右侧布局
-				if (wantToShowLeftLayout()) {
-					if (shouldScrollToLeftLayout()) {
-						scrollToLeftLayout();
-					} else {
-						scrollToRightLayout();
+				//左边菜单没有显示
+				if (Math.abs(moveDistanceX)>touchSlop && !isLeftLayoutVisible &&  !isSliding && Math.abs(distanceY) <= touchSlop) {
+					isSliding = true;
+					if(moveDistanceX>0){//确保是向右滑动
+						rightLayoutParams.rightMargin = -moveDistanceX;
+						if(screenWidth-Math.abs(rightLayoutParams.rightMargin)<screenWidth-leftLayoutParams.width){
+							rightLayoutParams.rightMargin=-leftLayoutParams.width;
+						}
+						rightLayout.setLayoutParams(rightLayoutParams);
 					}
-				} else if (wantToShowRightLayout()) {
-					if (shouldScrollToRightLayout()) {
-						scrollToRightLayout();
-					} else {
-						scrollToLeftLayout();
+					isSliding = false;
+				}
+				//左边菜单已经显示
+				if (Math.abs(moveDistanceX)>touchSlop && isLeftLayoutVisible &&  !isSliding && Math.abs(distanceY) <= touchSlop) {
+					isSliding = true;
+					rightLayoutParams.rightMargin = rightEdge - moveDistanceX;
+					if(rightLayoutParams.rightMargin >0){
+						rightLayoutParams.rightMargin = 0;
+					}
+					rightLayout.setLayoutParams(rightLayoutParams);
+					isSliding = false;
+				}
+				break;
+			case MotionEvent.ACTION_UP:
+				xUp = event.getRawX();
+				yUp = event.getRawY();
+				int upDistanceX = (int) (xUp - xDown);
+				int upDistanceY = (int) (yUp - yDown);
+				
+				if (!isSliding) {
+					// 手指抬起时，进行判断当前手势的意图，从而决定是滚动到左侧布局，还是滚动到右侧布局
+					if (wantToShowLeftLayout()) {
+						if (shouldScrollToLeftLayout()) {
+							scrollToLeftLayout();
+						} else {
+							scrollToRightLayout();
+						}
+					} else if (wantToShowRightLayout()) {
+						if (shouldScrollToRightLayout()) {
+							scrollToRightLayout();
+						} else {
+							scrollToLeftLayout();
+						}
 					}
 				}
-			} else if (upDistanceX < touchSlop && isLeftLayoutVisible) {
-				scrollToRightLayout();
-			}
-			recycleVelocityTracker();
-			break;
+				recycleVelocityTracker();
+				break;
 		}
+		
 		if (v.isEnabled()) {
 			if (isSliding) {
 				unFocusBindView();
@@ -243,7 +297,7 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 			if (isLeftLayoutVisible) {
 				return true;
 			}
-			return false;
+			return true;
 		}
 		return true;
 	}
@@ -347,7 +401,7 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 				}
 				publishProgress(rightMargin);
 				// 为了要有滚动效果产生，每次循环使线程睡眠20毫秒，这样肉眼才能够看到滚动动画。
-				sleep(15);
+				sleep(5);
 			}
 			if (speed[0] > 0) {
 				isLeftLayoutVisible = false;
