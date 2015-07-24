@@ -56,9 +56,6 @@ public class MainActivity extends Activity {
 				contentItems);
 		contentListView.setAdapter(contentListAdapter);
 		
-		// 将监听滑动事件绑定在contentListView上右边如果子类有全屏显示的就绑定到哪个上面
-		//原因是子类接收到触摸事件后父类就收不到啦
-		//slidingLayout.setScrollEvent(slidingLayout);
 		
 		//直接使用按钮打开关闭菜单
 		menuButton.setOnClickListener(new OnClickListener() {

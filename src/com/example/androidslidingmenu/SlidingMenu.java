@@ -285,6 +285,8 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 					}
 				}
 				recycleVelocityTracker();
+				//重置成其它滑动
+				TOUTH_STATUS=OTHER_TOUTH;
 				break;
 		}
 		
