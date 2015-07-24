@@ -9,7 +9,7 @@
 <include layout="@layout/menu"/>
     <LinearLayout
         android:id="@+id/content"
-        android:layout_width="320dip"
+        android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_alignParentRight="true"
         android:background="#fafafa"

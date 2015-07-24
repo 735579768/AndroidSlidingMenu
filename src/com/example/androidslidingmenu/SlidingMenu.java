@@ -233,12 +233,9 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 				int moveDistanceX = (int) (xMove - xDown);
 				int distanceY = (int) (yMove - yDown);
 				//判断是哪种滑动类型
-				if(Math.abs(moveDistanceX)>=touchSlop && Math.abs(distanceY)<=touchSlop){
+				if(TOUTH_STATUS==OTHER_TOUTH && (Math.abs(moveDistanceX)>=touchSlop && Math.abs(distanceY)<=touchSlop)){
 					//左右滑动
 					TOUTH_STATUS=LEFT_RIGHT_TOUTH;
-				}else{
-					//其它滑动
-					TOUTH_STATUS=OTHER_TOUTH;
 				}
 				//左边菜单没有显示
 				if (Math.abs(moveDistanceX)>touchSlop && !isLeftLayoutVisible &&  !isSliding && Math.abs(distanceY) <= touchSlop) {
@@ -255,11 +252,13 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 				//左边菜单已经显示
 				if (Math.abs(moveDistanceX)>touchSlop && isLeftLayoutVisible &&  !isSliding && Math.abs(distanceY) <= touchSlop) {
 					isSliding = true;
+					if(moveDistanceX<0){//确保是向左滑动
 					rightLayoutParams.rightMargin = rightEdge - moveDistanceX;
 					if(rightLayoutParams.rightMargin >0){
 						rightLayoutParams.rightMargin = 0;
 					}
 					rightLayout.setLayoutParams(rightLayoutParams);
+					}
 					isSliding = false;
 				}
 				break;
@@ -299,6 +298,10 @@ public class SlidingMenu extends RelativeLayout implements OnTouchListener {
 			}
 			return true;
 		}
+
+		//重置成其它滑动
+		TOUTH_STATUS=OTHER_TOUTH;
+
 		return true;
 	}
 
